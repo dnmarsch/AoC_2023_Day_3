@@ -58,8 +58,8 @@ private:
     void addEntryToMapSumPartNumber(int partNum, int x, int y);
     unsigned long int sumPartNums = 0;
     std::vector<std::string> schematic = {};
-    std::ifstream inputFile{"input.txt"};
-    // std::ifstream inputFile{"test.txt"};
+    // std::ifstream inputFile{"input.txt"};
+    std::ifstream inputFile{"test.txt"};
     std::vector<std::pair<int,int>> specialChars = {};
     std::multimap<int, struct partNumber> partNums = {};
     std::vector<AdjacencyTypes> adjacentTypes = { eUp, eDown, eLeft, eRight, eDiagUpLeft, eDiagUpRight,
@@ -187,37 +187,26 @@ bool GearRatio::posHasNumericalDigit(int x, int y)
     return isNumericDigit;
 }
 
-/**
- * @brief Look through string, in reverse order, for first character not of chars
- * 
- * @param str string/line
- * @param pos start position
- * @param chars characters of type we don't want
- * @return std::string::size_type position of first character not of desired type
- */
-std::string::size_type find_first_of_not_reverse(
-    std::string const& str,
-    std::string::size_type const pos,
-    std::string const& chars)
+std::string::size_type find_first_of_not_reverse(std::string const& line, std::string::size_type const pos)
 {
-    if (pos < 1)
+    //go backwards through !isDigit(line.at(pos)) & return pos
+    std::cout << "searching through line: " << line << "\n";
+    auto i = pos;
+    for(i = pos; i >= 0; i--)
     {
-        return std::string::npos;
+        if(!isdigit(line.at(i)))
+        {
+            i+=1; //don't include the not digit character
+            return i;
+        }
+        else
+        {
+            std::cout << "digit: " << line.at(i) << "\ti: " << i << "\n";
+        }
+        if(i == 0) break;
     }
-    if(pos > str.size())
-    {
-        return std::string::npos;
-    }
-
-    std::string::size_type const res = str.find_last_of(chars, pos - 1) + 1;
-    if(res == pos)
-    {
-        find_first_of_not_reverse(str, pos - 1, chars);
-    }
-    else
-    {
-        return res;
-    }
+    if(isdigit(line.at(0))) return 0;
+    else return std::string::npos; //no digit character found in search
 }
 
 /**
@@ -280,14 +269,17 @@ void GearRatio::getPartNumberString(int x, int y, Directions direction)
 
     std::string line = schematic.at(y);
     std::cout << "current line #: " << y << "\t" << line << "\n";
-    size_t left_pos = find_first_of_not_reverse(line, x, notNumericalDigit);
+    size_t left_pos = find_first_of_not_reverse(line, x);
     size_t right_pos = line.find_first_not_of(numericalDigits, x);
 
     if(direction == eLeftDir || direction == eBothDir)
     {
-        if(left_pos != std::string::npos) //0 or left_pos < right_pos
+        if(left_pos != std::string::npos && left_pos < x)
         {
-            leftSubstring =  line.substr(left_pos, x-left_pos);
+            if(direction == eLeftDir)
+                leftSubstring =  line.substr(left_pos, x-left_pos+1);
+            else
+                leftSubstring =  line.substr(left_pos, x-left_pos); //no+1 bc right substring includes it
         }
     }
 
@@ -296,7 +288,7 @@ void GearRatio::getPartNumberString(int x, int y, Directions direction)
         //either no numeric digit found OR numeric digits all the way to end of line
         if(right_pos == std::string::npos)
         {
-            if(isdigit(line.at(lineWidth))) //digit at end of line
+            if(isdigit(line.at(lineWidth-1))) //digit at end of line
             {
                 rightSubstring = line.substr(x, lineWidth-x);
             }
@@ -310,6 +302,14 @@ void GearRatio::getPartNumberString(int x, int y, Directions direction)
     std::string AsciiSubstring = leftSubstring + rightSubstring;
     if(AsciiSubstring.size() > 0)
     {
+        for(auto i=0; i<AsciiSubstring.size(); i++)
+        {
+            if(!isdigit(AsciiSubstring.at(i)))
+            {
+                std::cout << "ascii string: " << AsciiSubstring << "\n";
+                while(true); //for testing
+            }
+        }
         int partNumber = std::stoi(AsciiSubstring);
         std::cout << "Ascii substring: " << AsciiSubstring << "\tint val: " << partNumber << "\n";
 
@@ -356,7 +356,7 @@ void GearRatio::checkForPartNum(AdjacencyTypes adjType, int x, int y)
             if(canLookLeft(x))
             {
                 std::cout << "Looking left at pos: " << x-1 << "line to look at: " << y << "\n";
-                getPartNumberString(x, y, eLeftDir);
+                getPartNumberString(x-1, y, eLeftDir);
             }
             break;
         case eRight:
@@ -408,13 +408,12 @@ void GearRatio::checkForPartNum(AdjacencyTypes adjType, int x, int y)
  */
 void GearRatio::checkForValidPartNumbers()
 {
-
-    for(auto it = specialChars.begin(); it != specialChars.end(); it++)
-    {
-        auto specCharPos = it->first;
-        auto specCharRow = it->second;
-        std::cout << "special char found at pos: " << specCharPos << "\tline num: " << specCharRow << "\n";
-    }
+    // for(auto it = specialChars.begin(); it != specialChars.end(); it++)
+    // {
+    //     auto specCharPos = it->first;
+    //     auto specCharRow = it->second;
+    //     std::cout << "special char found at pos: " << specCharPos << "\tline num: " << specCharRow << "\n";
+    // }
     for(auto it = specialChars.begin(); it != specialChars.end(); it++)
     {
         auto specCharPos = it->first;
