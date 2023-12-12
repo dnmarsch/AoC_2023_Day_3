@@ -18,6 +18,13 @@ typedef enum : int
     eDiagDownRight
 } AdjacencyTypes;
 
+typedef enum : int
+{
+    eLeftDir = 0,
+    eRightDir,
+    eBothDir
+} Directions;
+
 class GearRatio
 {
 public:
@@ -46,13 +53,13 @@ private:
     bool canLookLeft(int x);
     bool canLookRight(int x);
     bool posHasNumericalDigit(int x, int y);
-    void getPartNumberString(int x, int y);
+    void getPartNumberString(int x, int y, Directions direction);
     void checkPartNumAddIfNeeded(int partNum, int x, int y);
     void addEntryToMapSumPartNumber(int partNum, int x, int y);
     unsigned long int sumPartNums = 0;
     std::vector<std::string> schematic = {};
-    // std::ifstream inputFile{"input.txt"};
-    std::ifstream inputFile{"test.txt"};
+    std::ifstream inputFile{"input.txt"};
+    // std::ifstream inputFile{"test.txt"};
     std::vector<std::pair<int,int>> specialChars = {};
     std::multimap<int, struct partNumber> partNums = {};
     std::vector<AdjacencyTypes> adjacentTypes = { eUp, eDown, eLeft, eRight, eDiagUpLeft, eDiagUpRight,
@@ -180,37 +187,36 @@ bool GearRatio::posHasNumericalDigit(int x, int y)
     return isNumericDigit;
 }
 
-
-
+/**
+ * @brief Look through string, in reverse order, for first character not of chars
+ * 
+ * @param str string/line
+ * @param pos start position
+ * @param chars characters of type we don't want
+ * @return std::string::size_type position of first character not of desired type
+ */
 std::string::size_type find_first_of_not_reverse(
     std::string const& str,
     std::string::size_type const pos,
     std::string const& chars)
 {
-    // assert(pos > 1);
-    // assert(pos < str.size());
     if (pos < 1)
+    {
+        return std::string::npos;
+    }
+    if(pos > str.size())
     {
         return std::string::npos;
     }
 
     std::string::size_type const res = str.find_last_of(chars, pos - 1) + 1;
-    // return res == pos ? find_first_of_not_reverse(str, pos - 1, chars) : res ? res : std::string::npos;
-
     if(res == pos)
     {
         find_first_of_not_reverse(str, pos - 1, chars);
     }
     else
     {
-        if(res == 0)
-        {
-            return 0;
-        }
-        else
-        {
-            return res;
-        }
+        return res;
     }
 }
 
@@ -238,42 +244,24 @@ void GearRatio::addEntryToMapSumPartNumber(int partNum, int x, int y)
 void GearRatio::checkPartNumAddIfNeeded(int partNum, int x, int y)
 {
     /* Handle checking multimap & adding to map & total sum */
-    // if(partNums.size() > 0)
-    // {
-        if(auto it = partNums.find(partNum) == partNums.end())
+    if(auto it = partNums.find(partNum) == partNums.end())
+    {
+        addEntryToMapSumPartNumber(partNum, x, y);
+    }
+    else
+    {
+        auto range = partNums.equal_range(partNum);
+        for(auto i = range.first; i != range.second; ++i)
         {
-            addEntryToMapSumPartNumber(partNum, x, y);
-        }
-        else
-        {
-            auto range = partNums.equal_range(partNum);
-            for(auto i = range.first; i != range.second; ++i)
+            std::cout << "multi map has an entry for: " << partNum << " this already, need to check if value at same position\n";
+            if(!(x == i->second.pos && y == i->second.lineNum)) //not same position && hasn't been added yet
             {
-                std::cout << "multi map has an entry for: " << partNum << " this already, need to check if value at same position\n";
-                if(!(x == i->second.pos && y == i->second.lineNum)) //not same position && hasn't been added yet
-                {
-                    addEntryToMapSumPartNumber(partNum, x, y);
-                }
-                // else //same position
-                // {
-                // }
+                addEntryToMapSumPartNumber(partNum, x, y);
             }
+            // else //same position
         }
-    // }
-    // else //immediately add first entry to multimap
-    // {
-    //     addEntryToMapSumPartNumber(partNum, x, y);
-    // }
+    }
 }
-/*
-467..114..
-...*......
-..35..633.
-......#...
-617*......
-.....+.58.
-..592.....
-*/
 
 /**
  * @brief This position has a numerical digit,
@@ -284,55 +272,55 @@ void GearRatio::checkPartNumAddIfNeeded(int partNum, int x, int y)
  * @param x row position to search at
  * @param y line to search at
  */
-void GearRatio::getPartNumberString(int x, int y)
+void GearRatio::getPartNumberString(int x, int y, Directions direction)
 {
+    bool isStringToEOL = false;
+    std::string leftSubstring;
+    std::string rightSubstring;
+
     std::string line = schematic.at(y);
     std::cout << "current line #: " << y << "\t" << line << "\n";
     size_t left_pos = find_first_of_not_reverse(line, x, notNumericalDigit);
     size_t right_pos = line.find_first_not_of(numericalDigits, x);
 
-
-
-
-    if(left_pos < right_pos && left_pos != std::string::npos && right_pos != std::string::npos)
+    if(direction == eLeftDir || direction == eBothDir)
     {
-        std::string AsciiSubstring = line.substr(left_pos, x-left_pos) + line.substr(x, right_pos-x);
-        int partNumber = std::stoi(AsciiSubstring); 
-        std::cout << "Ascii substring: " << AsciiSubstring << "\tint val: " << partNumber << "\n";
-
-        checkPartNumAddIfNeeded(partNumber, left_pos, y);
+        if(left_pos != std::string::npos) //0 or left_pos < right_pos
+        {
+            leftSubstring =  line.substr(left_pos, x-left_pos);
+        }
     }
-    //part number is to the right (diagonal) of the special character (left doesn't matter)
-    else if (right_pos < lineWidth && left_pos != std::string::npos && right_pos != std::string::npos)
+
+    if(direction == eRightDir || direction == eBothDir)
     {
-        std::string AsciiSubstring = line.substr(left_pos, x-left_pos) + line.substr(x, right_pos-x);
+        //either no numeric digit found OR numeric digits all the way to end of line
+        if(right_pos == std::string::npos)
+        {
+            if(isdigit(line.at(lineWidth))) //digit at end of line
+            {
+                rightSubstring = line.substr(x, lineWidth-x);
+            }
+        }
+        else if(right_pos != std::string::npos)
+        {
+            rightSubstring = line.substr(x, right_pos-x);
+        }
+    }
+
+    std::string AsciiSubstring = leftSubstring + rightSubstring;
+    if(AsciiSubstring.size() > 0)
+    {
         int partNumber = std::stoi(AsciiSubstring);
         std::cout << "Ascii substring: " << AsciiSubstring << "\tint val: " << partNumber << "\n";
 
-        checkPartNumAddIfNeeded(partNumber, left_pos, y);
-    }
-    //part number is to the left (diagonal) of the special character (right doesn't matter)
-
-    else if (left_pos == 0) //part number goes all the way to end of line
-    {
-        std::cout << "Left pos = npos!!!!!!!!!!!!!!!!" << "\n";
-        std::string AsciiSubstring = line.substr(0, x) + line.substr(x, right_pos-x);
-        int partNumber = std::stoi(AsciiSubstring);
-        std::cout << "Ascii substring: " << AsciiSubstring << "\tint val: " << partNumber << "\n";
-
-        checkPartNumAddIfNeeded(partNumber, 0, y);
-
-        // while(true);
-    }
-    else if (right_pos == std::string::npos) //part number goes all the way to end of line
-    {
-        std::cout << "Right pos = npos!!!!!!!!!!!!!!!!" << "\n";
-        std::string AsciiSubstring = line.substr(left_pos, x-left_pos) + line.substr(x, lineWidth-x);
-        int partNumber = std::stoi(AsciiSubstring); 
-        std::cout << "Ascii substring: " << AsciiSubstring << "\tint val: " << partNumber << "\n";
-
-        checkPartNumAddIfNeeded(partNumber, left_pos, y);
-        // while(true);
+        if(left_pos != std::string::npos)
+        {
+            checkPartNumAddIfNeeded(partNumber, left_pos, y); //left substring start is beginning of string
+        }
+        else
+        {
+            checkPartNumAddIfNeeded(partNumber, x, y); //right substring start is beginning of string
+        }
     }
 }
 
@@ -354,56 +342,56 @@ void GearRatio::checkForPartNum(AdjacencyTypes adjType, int x, int y)
             if(canLookUp(y) && posHasNumericalDigit(x, y-1))
             {
                 std::cout << "Looking up at pos: " << x << "line to look at: " << y-1 << "\n";
-                getPartNumberString(x, y-1);
+                getPartNumberString(x, y-1, eBothDir);
             }
             break;
         case eDown:
             if(canLookDown(y))
             {
                 std::cout << "Looking down at pos: " << x << "line to look at: " << y+1 << "\n";
-                getPartNumberString(x, y+1);
+                getPartNumberString(x, y+1, eBothDir);
             }
             break;
         case eLeft:
             if(canLookLeft(x))
             {
                 std::cout << "Looking left at pos: " << x-1 << "line to look at: " << y << "\n";
-                getPartNumberString(x-1, y);
+                getPartNumberString(x, y, eLeftDir);
             }
             break;
         case eRight:
             if(canLookRight(x))
             {
                 std::cout << "Looking right at pos: " << x+1 << "line to look at: " << y << "\n";
-                getPartNumberString(x+1, y);
+                getPartNumberString(x+1, y, eRightDir);
             }
             break;
         case eDiagUpLeft:
             if(canLookUp(y) && canLookLeft(x))
             {
                 std::cout << "Looking Up & left at pos: " << x-1 << "line to look at: " << y-1 << "\n";
-                getPartNumberString(x-1, y-1);
+                getPartNumberString(x-1, y-1, eBothDir);
             }
             break;
         case eDiagUpRight:
             if(canLookUp(y) && canLookRight(x))
             {
                 std::cout << "Looking Up & right at pos: " << x+1 << "line to look at: " << y-1 << "\n";
-                getPartNumberString(x+1, y-1);
+                getPartNumberString(x+1, y-1, eBothDir);
             }
             break;
         case eDiagDownLeft:
             if(canLookDown(y) && canLookLeft(x))
             {
                 std::cout << "Looking Down & left at pos: " << x-1 << "line to look at: " << y+1 << "\n";
-                getPartNumberString(x-1, y+1);
+                getPartNumberString(x-1, y+1, eBothDir);
             }
             break;
         case eDiagDownRight:
             if(canLookDown(y) && canLookRight(x))
             {
                 std::cout << "Looking Down & right at pos: " << x+1 << "line to look at: " << y+1 << "\n";
-                getPartNumberString(x+1, y+1);
+                getPartNumberString(x+1, y+1, eBothDir);
             }
             break;
 
@@ -450,6 +438,11 @@ void GearRatio::calcSumPartNumbers()
     readInput();
 
     checkForValidPartNumbers();
+
+    for(auto it = partNums.begin(); it != partNums.end(); it++)
+    {
+        std::cout << "part num: " << it->first << "\t at x,y: " << it->second.pos << " " << it->second.lineNum << "\n";
+    }
 }
 
 int main() {
