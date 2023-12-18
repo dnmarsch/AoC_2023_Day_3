@@ -75,7 +75,7 @@ void GearRatio::readInput()
 }
 
 /**
- * @brief Find all special characters in line and add position to vector 
+ * @brief Find all part numbers in line and add position to multimap
  * (. doesn't count as special char)
  * @param line string from input file
  * @param lineNum line number from input file
@@ -90,27 +90,26 @@ void GearRatio::findPartNumbers(std::string& line, int lineNum)
         foundPos = line.find_first_of(numericalDigits, foundPosPrev);
         if (foundPos != std::string::npos)
         {
-            std::cout << "Found number: " << line[foundPos] << " at position: " << (int)foundPos 
-                << " on line num: " << lineNum << "\n";
+            // std::cout << "Found number: " << line[foundPos] << " at position: " << (int)foundPos 
+            //     << " on line num: " << lineNum << "\n";
             size_t endPartNum = line.find_first_not_of(numericalDigits, foundPos);
+            // std::cout << "end of partnumber at: " << (int)endPartNum << "\n";
 
             std::string partNumber(line, foundPos, endPartNum - foundPos);
             int foundPartNum = std::stoi(partNumber);
-            std::cout << "Ascii substring: " << partNumber << "\tint val: " << foundPartNum << "\n";
+            // std::cout << "Ascii substring: " << partNumber << "\tint val: " << foundPartNum << "\n";
 
-            
-            
             if(endPartNum == std::string::npos) //end of string/line
             {
-                std::cout << "LENGTH: " << (int)(lineWidth-foundPos) << "\n";
+                // std::cout << "LENGTH: " << (int)(lineWidth-foundPos) << "\n";
                 partNums.insert({foundPartNum, (struct partNumber){(int)foundPos, lineNum, false, (int)(lineWidth-foundPos)}});
                 break;
             }
             else
             {
-                std::cout << "LENGTH: " << (int)(endPartNum-foundPos) << "\n";
+                // std::cout << "LENGTH: " << (int)(endPartNum-foundPos) << "\n";
                 partNums.insert({foundPartNum, (struct partNumber){(int)foundPos, lineNum, false, (int)(endPartNum-foundPos)}});
-                foundPosPrev = foundPos + endPartNum;
+                foundPosPrev = foundPos + (endPartNum-foundPos);
             }
         }
     }
@@ -167,7 +166,7 @@ bool GearRatio::canLookRight(int x)
 }
 
 /**
- * @brief Check if position has a numerical digit for a part number
+ * @brief Check if position has a special character for a part number
  * 
  * @param x row of position to check
  * @param y line of position to check
@@ -181,20 +180,20 @@ bool GearRatio::posHasSpecChar(int x, int y, int searchLength)
     std::string line = schematic.at(y);
 
     std::string searchIn = line.substr(x, searchLength);
-    std::cout << "search substring: " << searchIn << "\tsearchLength: " << searchLength << "\n";
+    // std::cout << "search substring: " << searchIn << "\tsearchLength: " << searchLength << "\n";
     foundPos = searchIn.find_first_not_of("0123456789.");
 
     if (foundPos != std::string::npos)
     {
-        std::cout << "Found special character: " << searchIn.at(foundPos) << " at position: " << foundPos 
-            << " on line num: " << y << "\n";
+        // std::cout << "Found special character: " << searchIn.at(foundPos) << " at position: " << foundPos 
+        //     << " on line num: " << y << "\n";
         isSpecChar = true;
     }
     return isSpecChar;
 }
 
 /**
- * @brief Add entry to map & add part number to total part number
+ * @brief Add add part number to total part number
  * 
  * @param partNum part number to be added
  * @param x position of start of part number to be added
@@ -203,7 +202,7 @@ bool GearRatio::posHasSpecChar(int x, int y, int searchLength)
 void GearRatio::addEntryToMapSumPartNumber(int partNum, int x, int y)
 {
     sumPartNums += partNum;
-    std::cout << "adding to total Part number: " << partNum << "\tTotal Part Numbers: " << sumPartNums << "\n";
+    // std::cout << "adding to total Part number: " << partNum << "\tTotal Part Numbers: " << sumPartNums << "\n";
 }
 /**
  * @brief Check multimap for this part number, if not already entered,
@@ -226,10 +225,10 @@ void GearRatio::checkPartNumAddIfNeeded(int partNum, int x, int y)
         auto range = partNums.equal_range(partNum);
         for(auto i = range.first; i != range.second; ++i)
         {
-            std::cout << "map X: " << i->second.pos << "\tmap Y: " << i->second.lineNum << "\n";
+            // std::cout << "map X: " << i->second.pos << "\tmap Y: " << i->second.lineNum << "\n";
             if((x == i->second.pos && y == i->second.lineNum) && !i->second.hasBeenAdded) //not same position && hasn't been added yet
             {
-                std::cout << "not in same position\n";
+                // std::cout << "not in same position\n";
                 i->second.hasBeenAdded = true;
                 addEntryToMapSumPartNumber(partNum, x, y);
             }
@@ -238,14 +237,11 @@ void GearRatio::checkPartNumAddIfNeeded(int partNum, int x, int y)
 }
 
 /**
- * @brief Check adjacency type of this special character for a part number & handle
- * finding the entire part number & summing it (if not already summed via multimap)
+ * @brief Check adjacency type of this part number for a special character & handle
+ * summing it (if not already summed via multimap)
  * 
  * @param adjType AdjacencyTypes that we're currently checking
- * @param x special character row position
- * @param y special character line position
- * @return true part number found at this adjacency
- * @return false no part number found
+ * @param partNumEntry multimap entry/part number we're checking
  */
 void GearRatio::checkForAdjSpecChar(AdjacencyTypes adjType, std::pair<const int,struct partNumber> partNumEntry)
 {
@@ -260,7 +256,7 @@ void GearRatio::checkForAdjSpecChar(AdjacencyTypes adjType, std::pair<const int,
         case eUp:
             if(canLookUp(y))
             {
-                std::cout << "Looking up at pos: " << x << "line to look at: " << y-1 << "\n";
+                // std::cout << "Looking up at pos: " << x << "line to look at: " << y-1 << "\n";
                 if(canLookLeft(x)) startPos = x-1;
                 else startPos = x; //at beginning of line
                 if(canLookRight(x+length)) endPos = x+length; //can look to right for special char
@@ -275,7 +271,7 @@ void GearRatio::checkForAdjSpecChar(AdjacencyTypes adjType, std::pair<const int,
         case eDown:
             if(canLookDown(y))
             {
-                std::cout << "Looking down at pos: " << x << "line to look at: " << y+1 << "\n";
+                // std::cout << "Looking down at pos: " << x << "line to look at: " << y+1 << "\n";
                 if(canLookLeft(x)) startPos = x-1;
                 else startPos = x; //at beginning of line
                 if(canLookRight(x+length)) endPos = x+length; //can look to right for special char
@@ -290,7 +286,7 @@ void GearRatio::checkForAdjSpecChar(AdjacencyTypes adjType, std::pair<const int,
         case eLeft:
             if(canLookLeft(x))
             {
-                std::cout << "Looking left at pos: " << x-1 << "line to look at: " << y << "\n";
+                // std::cout << "Looking left at pos: " << x-1 << "line to look at: " << y << "\n";
                 if(posHasSpecChar(x-1, y, 1))
                 {
                    checkPartNumAddIfNeeded(curPartNum, x, y);
@@ -300,7 +296,7 @@ void GearRatio::checkForAdjSpecChar(AdjacencyTypes adjType, std::pair<const int,
         case eRight:
             if(canLookRight(x))
             {
-                std::cout << "Looking right at pos: " << x+1 << "line to look at: " << y << "\n";
+                // std::cout << "Looking right at pos: " << x+1 << "line to look at: " << y << "\n";
                 if(posHasSpecChar(x+length, y, 1))
                 {
                    checkPartNumAddIfNeeded(curPartNum, x, y);
@@ -314,7 +310,7 @@ void GearRatio::checkForAdjSpecChar(AdjacencyTypes adjType, std::pair<const int,
 }
 
 /**
- * @brief Iterate through special characters vector.
+ * @brief Iterate through partnumbers in multimap
  * Check for valid (adjacent) "part numbers" & add to sum
  * (only do once for each as there could be multiple character adjacent to one part number).
  * 
@@ -328,7 +324,7 @@ void GearRatio::checkForValidPartNumbers()
         auto partNumX = entry.second.pos;
         auto partNumY = entry.second.lineNum;
 
-        std::cout << "part number: " << curPartNum << "\tX: " << partNumX << "\tY: " << partNumY << "\n";
+        // std::cout << "part number: " << curPartNum << "\tX: " << partNumX << "\tY: " << partNumY << "\n";
 
         /*check for adjacent "part numbers" & sum if adjacent and not summed yet & add to multimap
         (left, right, up, down, diagonal(up & left, up & right, down & left, down & right)) */
@@ -347,10 +343,10 @@ void GearRatio::calcSumPartNumbers()
 {
     readInput();
 
-    for(auto it = partNums.begin(); it != partNums.end(); it++)
-    {
-        std::cout << "part num: " << it->first << "\t at x,y: " << it->second.pos << " " << it->second.lineNum << "\n";
-    }
+    // for(auto it = partNums.begin(); it != partNums.end(); it++)
+    // {
+    //     std::cout << "part num: " << it->first << "\t at x,y: " << it->second.pos << " " << it->second.lineNum << "\n";
+    // }
 
     checkForValidPartNumbers();
 }
